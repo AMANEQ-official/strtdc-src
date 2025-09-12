@@ -102,7 +102,7 @@ begin
         else
           if(odpWrenIn(i) = '1') then -- There are data from the ODP block
             din_fifo(i)  <= odpDataIn(i);
-            if(checkTdc(odpDataIn(i)(kPosHbdDataType'range)) = false)then -- delimiter word
+            if(checkUsrData(odpDataIn(i)(kPosHbdDataType'range)) = false)then -- delimiter word
               is_delimiter(i) <= '1';
               wren_fifo(i)    <= '1';
             elsif(prog_full_fifo(i) /= '0') then  -- incoming FIFO is almost full

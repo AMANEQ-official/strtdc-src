@@ -30,7 +30,15 @@ entity VitalBlock is
     bufferFull          : out std_logic;                              -- Incomming buffer full flag
 
     -- Throttling status --
+    outThrottlingOn     : out std_logic;                              -- Output throttling status
     inThrottlingT2On    : out std_logic;                              -- Input throttling Type2 status
+
+    -- Offset correction --
+    rdEnFromOfsCorr     : in std_logic;
+
+    -- Link buf status --
+    pfullLinkBufIn      : in std_logic;
+    emptyLinkInBufIn    : in std_logic;
 
     -- output --
     rdenIn              : in  STD_LOGIC;                                  --output fifo read enable
@@ -95,6 +103,7 @@ begin
   bufferProgFull  <= '0' when(unsigned(incoming_buf_pfull) = 0) else '1';
   bufferFull      <= '0' when(unsigned(incoming_buf_full) = 0) else '1';
   inThrottlingT2On  <= input_throttling_type2_on;
+  outThrottlingOn   <= output_throttling_on;
 
   input_throttling_type2_on   <= '0' when(unsigned(inthrottling_is_working) = 0) else '1';
 
@@ -165,8 +174,10 @@ begin
   gen_hrtdc : if kTdcType = "RAYRAW-TDC" generate
   begin
 
+    output_throttling_on  <= '0';
     validOut              <= valid_merger_out;
     dataOut               <= dout_merger_out;
+
 
     u_merger_block: entity mylib.MergerMznBlock
       generic map(
@@ -195,14 +206,15 @@ begin
   gen_lrtdc : if kTdcType = "LRTDC" generate
   begin
 
-    dataOut   <= dout_merger_out;
-    validOut  <= valid_merger_out;
+    read_enable_to_merger   <= '1' when(output_throttling_on = '1') else
+                               '0' when(output_throttling_on = '0' and rdEnFromOfsCorr = '0') else
+                              rdenIn;
 
     u_merger_block: entity mylib.MergerBlock
       generic map(
         kNumInput       => kNumInput,
         kDivisionRatio  => kDivisionRatio,
-        enDEBUG         => false
+        enDEBUG         => true
       )
       port map(
         clk             => clk,
@@ -215,15 +227,38 @@ begin
         almostEmptyIn   => almost_empty_incoming,
         validIn         => valid_incoming,
 
-        rdenIn          => rdenIn,
+        rdenIn          => read_enable_to_merger,
         dataOut         => dout_merger_out,
         emptyOut        => emptyOut,
         almostEmptyOut  => almostEmptyOut      ,
         validOut        => valid_merger_out
       );
 
+    u_OutThrottle: entity mylib.OutputThrottling
+      generic map(
+        enDEBUG => false
+      )
+      port map(
+        syncReset           => sync_reset,
+        clk                 => clk,
 
+        -- status input --
+        intputThrottlingOn  => input_throttling_type2_on,
+        pfullLinkIn         => pfullLinkBufIn,
+        emptyLinkIn         => emptyLinkInBufIn,
 
+        -- Status output --
+        isWorking           => output_throttling_on,
+
+        -- Data In --
+        validIn             => valid_merger_out,
+        dIn                 => dout_merger_out,
+
+        -- Data Out --
+        validOut            => validOut,
+        dOut                => dataOut
+
+      );
   end generate;
 
   -- Reset sequence --

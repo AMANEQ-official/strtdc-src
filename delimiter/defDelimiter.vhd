@@ -8,8 +8,15 @@ use mylib.defDataBusAbst.all;
 package defDelimiter is
   -- Data type -----------------------------------------------------------------------------
   constant kWidthDataType             : integer  := 6;
+
   constant kDatatypeTDCData           : std_logic_vector (kWidthDataType-1 downto 0) := "001011"; -- TDC leading ata
   constant kDatatypeTDCDataT          : std_logic_vector (kWidthDataType-1 downto 0) := "001101"; -- TDC trailing ata
+
+  constant kDatatypeCAdcData          : std_logic_vector (kWidthDataType-1 downto 0) := "001100"; -- Corrected ADC data
+  constant kDatatypeAdcHead           : std_logic_vector (kWidthDataType-1 downto 0) := "001110"; -- ADC sub-frame header
+  constant kDatatypeAdcTrail          : std_logic_vector (kWidthDataType-1 downto 0) := "001010"; -- ADC sub-frame trailer
+  constant kDatatypeAdcData           : std_logic_vector (kWidthDataType-1 downto 0) := "001000"; -- ADC sub-frame payload
+
   constant kDataTypeIThrottleT1Start  : std_logic_vector (kWidthDataType-1 downto 0) := "011001"; -- Input Throttling Type2 Start timing
   constant kDataTypeIThrottleT1End    : std_logic_vector (kWidthDataType-1 downto 0) := "010001"; -- Input Throttling Type2 End timing
   constant kDataTypeIThrottleT2Start  : std_logic_vector (kWidthDataType-1 downto 0) := "011010"; -- Input Throttling Type2 Start timing
@@ -18,7 +25,7 @@ package defDelimiter is
   constant kDatatypeHeartbeat         : std_logic_vector (kWidthDataType-1 downto 0) := "011100"; -- 1st heartbeat delimiter
   constant kDatatypeHeartbeatT2       : std_logic_vector (kWidthDataType-1 downto 0) := "011110"; -- 2nd heartbeat delimiter
 
-  --Delifiter flag definition ---------------------------------------------------------------
+  -- Delimiter flag definition ---------------------------------------------------------------
   constant kWidthDelimiterFlag    : integer  := 16;  -- Delimiter flag width
 
   constant kIndexSOS              : integer  := 15;  -- 16th, SOS signal to software
@@ -68,7 +75,7 @@ package defDelimiter is
   constant kPosHbdTransSize : std_logic_vector(kPosHbdGenSize'low-1  downto kPosHbdGenSize'low  -20):= (others => '0');
 
   function checkDelimiter(data_type : std_logic_vector) return boolean;
-  function checkTdc(data_type : std_logic_vector) return boolean;
+  function checkUsrData(data_type : std_logic_vector) return boolean;
 
   end package defDelimiter;
 -- ----------------------------------------------------------------------------------
@@ -91,13 +98,13 @@ package body defDelimiter is
     end if;
   end checkDelimiter;
 
-  function checkTdc(data_type : std_logic_vector) return boolean is
+  function checkUsrData(data_type : std_logic_vector) return boolean is
   begin
-    if(data_type = kDatatypeTDCData or data_type = kDatatypeTDCDataT) then
+    if(data_type = kDatatypeTDCData or data_type = kDatatypeTDCDataT or data_type = kDatatypeAdcData) then
       return true;
     else
       return false;
     end if;
-  end checkTdc;
+  end checkUsrData;
 
 end package body defDelimiter;

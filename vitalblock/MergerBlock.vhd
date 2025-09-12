@@ -44,14 +44,15 @@ architecture Behavioral of MergerBlock is
   -- between input and FrontMerger
 
   -- between FrontMerger and BackMerger
-  signal rden_to_back             : std_logic_vector(kDivisionRatio-1 downto 0);
+  signal rden_to_front             : std_logic_vector(kDivisionRatio-1 downto 0);
   signal dout_from_front          : DataArrayType(kDivisionRatio-1 downto 0);
   signal empty_from_front         : std_logic_vector(kDivisionRatio-1 downto 0);
   signal almost_empty_from_front  : std_logic_vector(kDivisionRatio-1 downto 0);
   signal valid_from_front         : std_logic_vector(kDivisionRatio-1 downto 0);
 
   attribute mark_debug : boolean;
-  attribute mark_debug of rden_to_back  : signal is enDEBUG;
+  attribute mark_debug of rden_to_front  : signal is enDEBUG;
+  attribute mark_debug of valid_from_front : signal is enDEBUG;
   attribute mark_debug of empty_from_front : signal is enDEBUG;
 
 begin
@@ -81,7 +82,7 @@ begin
         almostEmptyIn   => almostEmptyIn((i+1)*kNumFrontInput-1 + kNumExtraCh downto i*kNumFrontInput),
         validIn         => validIn((i+1)*kNumFrontInput-1       + kNumExtraCh downto i*kNumFrontInput),
 
-        rdenIn          => rden_to_back(i),
+        rdenIn          => rden_to_front(i),
         dataOut         => dout_from_front(i),
         emptyOut        => empty_from_front(i),
         almostEmptyOut  => almost_empty_from_front(i),
@@ -108,7 +109,7 @@ begin
         almostEmptyIn   => almostEmptyIn((i+1)*kNumFrontInput-1 downto i*kNumFrontInput),
         validIn         => validIn((i+1)*kNumFrontInput-1 downto i*kNumFrontInput),
 
-        rdenIn          => rden_to_back(i),
+        rdenIn          => rden_to_front(i),
         dataOut         => dout_from_front(i),
         emptyOut        => empty_from_front(i),
         almostEmptyOut  => almost_empty_from_front(i),
@@ -130,7 +131,7 @@ begin
     progFullFifo        => open,
     hbfNumMismatch      => local_hbf_num_mismatch_back,
 
-    rdenOut             => rden_to_back,
+    rdenOut             => rden_to_front,
     dataIn              => dout_from_front,
     emptyIn             => empty_from_front,
     almostEmptyIn       => almost_empty_from_front,

@@ -13,6 +13,9 @@ package defDataBusAbst is
   type TimingArrayType    is array (natural range <>) of std_logic_vector;
   type TOTArrayType       is array (natural range <>) of std_logic_vector;
 
+  -- ADC Data Array ---------------------------------------------------------------------------
+  type AdcArrayType       is array (natural range <>) of std_logic_vector;
+
   -- Definition of the internal data word ----------------------------------------------------
   type IntDataArrayType is array(natural range <>) of std_logic_vector;
 

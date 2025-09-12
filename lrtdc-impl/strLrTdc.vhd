@@ -120,7 +120,8 @@ architecture RTL of StrLrTdc is
   -- Delimiter ----------------------------------------------------
   signal delimiter_flags        : std_logic_vector(kWidthDelimiterFlag-1 downto 0);
   signal delimiter_data_valid   : std_logic;
-  signal delimiter_dout         : std_logic_vector(kWidthIntData-1 downto 0);
+  signal delimiter_dout         : std_logic_vector(kWidthData-1 downto 0);
+  signal int_delimiter_data     : std_logic_vector(kWidthIntData-1 downto 0);
   signal reg_user_for_delimiter : std_logic_vector(kPosHbdUserReg'length-1 downto 0);
 
   attribute mark_debug of delimiter_data_valid  : signal is enDEBUG;
@@ -326,6 +327,10 @@ begin
       dOutDelimiter     => delimiter_dout
     );
 
+  int_delimiter_data(kPosIHbdDataType'range)  <= delimiter_dout(kPosHbdDataType'range);
+  int_delimiter_data(kPosIHbdFlag'range)      <= delimiter_dout(kPosHbdFlag'range);
+  int_delimiter_data(kPosIHbdHBFrame'range)   <= delimiter_dout(kPosHbdHBFrame'range);
+
   -- ODP block --
   u_ODPBlock: entity mylib.ODPBlock
     generic map(
@@ -362,7 +367,7 @@ begin
 
       -- Delimiter word I/F --
       validDelimiter  => delimiter_data_valid,
-      dInDelimiter    => delimiter_dout,
+      dInDelimiter    => int_delimiter_data,
 
       -- Signal input --
       sigIn           => sigIn,
