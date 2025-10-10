@@ -313,8 +313,8 @@ begin
   delimiter_flags(kIndexOutThrottling)    <= '0';
   delimiter_flags(kIndexHbfThrottling)    <= hbf_throttling_on;
 
-  delimiter_flags(kIndexFrameFlag1)       <= frameFlagsIn(1);
-  delimiter_flags(kIndexFrameFlag2)       <= frameFlagsIn(0);
+  delimiter_flags(kIndexFrameFlag1)       <= frameFlagsIn(0);
+  delimiter_flags(kIndexFrameFlag2)       <= frameFlagsIn(1);
 
   -- Delimiter generation --block --
   --laccp_fine_offset <= LaccpFineOffset when(reg_enbypass(kIndexOfsCorr) = '1') else (others => '0');
