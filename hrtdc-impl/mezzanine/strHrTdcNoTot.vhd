@@ -148,7 +148,6 @@ architecture RTL of StrHrTdcNoTot is
   signal odp_dout   : DataArrayType(2*kNumInput-1 downto 0);
 
   signal reg_tdc_mask     : std_logic_vector(255 downto 0);
-  signal reg_tdc_mask_t   : std_logic_vector(255 downto 0);
   signal reg_enbypass     : std_logic_vector(kWidthBypass-1 downto 0);
 
   signal reg_through, reg_switch, reg_auto_sw, reg_eninv  : std_logic;
@@ -365,8 +364,7 @@ begin
       regReadyLut     => reg_ready_lut,
       regEnInv        => reg_eninv,
 
-      regTdcMaskL    => reg_tdc_mask(kNumInput-1 downto 0),
-      regTdcMaskT    => reg_tdc_mask_t(kNumInput-1 downto 0),
+      regTdcMask     => reg_tdc_mask(kNumInput-1 downto 0),
 
       enBypassDelay   => reg_enbypass(kIndexDelay),
       enBypassParing  => '0',
@@ -453,7 +451,6 @@ begin
         reg_switch        <= '0';
         reg_eninv         <= '0';
         reg_tdc_mask      <= (others => '0');
-        reg_tdc_mask_t    <= (others => '0');
         reg_enbypass      <= (others => '0');
 
         reg_emumode_on    <= (others => '0');
@@ -507,21 +504,6 @@ begin
                   reg_tdc_mask(23 downto 16)  <= dataLocalBusIn;
                 when k4thByte =>
                   reg_tdc_mask(31 downto 24)  <= dataLocalBusIn;
-                when others =>
-                  null;
-              end case;
-              state_lbus      <= Done;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTdcMaskT(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  reg_tdc_mask_t(7 downto 0)  <= dataLocalBusIn;
-                when k2ndByte =>
-                  reg_tdc_mask_t(15 downto 8)  <= dataLocalBusIn;
-                when k3rdByte =>
-                  reg_tdc_mask_t(23 downto 16)  <= dataLocalBusIn;
-                when k4thByte =>
-                  reg_tdc_mask_t(31 downto 24)  <= dataLocalBusIn;
                 when others =>
                   null;
               end case;
@@ -590,20 +572,6 @@ begin
                   dataLocalBusOut <= reg_tdc_mask(23 downto 16);
                 when k4thByte =>
                   dataLocalBusOut <= reg_tdc_mask(31 downto 24);
-                when others =>
-                  null;
-              end case;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTdcMaskT(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  dataLocalBusOut <= reg_tdc_mask_t(7 downto 0);
-                when k2ndByte =>
-                  dataLocalBusOut <= reg_tdc_mask_t(15 downto 8);
-                when k3rdByte =>
-                  dataLocalBusOut <= reg_tdc_mask_t(23 downto 16);
-                when k4thByte =>
-                  dataLocalBusOut <= reg_tdc_mask_t(31 downto 24);
                 when others =>
                   null;
               end case;

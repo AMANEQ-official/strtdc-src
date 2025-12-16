@@ -41,6 +41,4 @@ package defStrHRTDC is
 
   constant kSelfRecoveryMode      : LocalAddressType := x"0E0"; -- W/R, [0:0], Activate self recovery mode
 
-  constant kTdcMaskT              : LocalAddressType := x"0F0"; -- W/R, [31:0], tdc data mask
-
 end package defStrHRTDC;

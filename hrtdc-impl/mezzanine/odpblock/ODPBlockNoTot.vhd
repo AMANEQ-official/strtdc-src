@@ -40,8 +40,7 @@ entity ODPBlockNoTot is
     regReadyLut     : out std_logic;
     regEnInv        : in std_logic;
 
-    regTdcMaskL     : in std_logic_vector(kNumInput-1 downto 0);
-    regTdcMaskT     : in std_logic_vector(kNumInput-1 downto 0);
+    regTdcMask      : in std_logic_vector(kNumInput-1 downto 0);
 
     enBypassDelay   : in  std_logic;
     enBypassParing  : in  std_logic;
@@ -451,8 +450,8 @@ begin
   end generate;
 
   -- TDC delay buffer ------------------------------------------------
-  valid_data_mask_l <= valid_cleading and (not regTdcMaskL);
-  valid_data_mask_t <= valid_ctrailing and (not regTdcMaskT);
+  valid_data_mask_l <= valid_cleading and (not regTdcMask);
+  valid_data_mask_t <= valid_ctrailing and (not regTdcMask);
 
   u_TDCDelayBufferL : entity mylib.TDCDelayBuffer
     generic map(
