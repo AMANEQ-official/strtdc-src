@@ -15,7 +15,7 @@ use mylib.defTDC.all;
 use mylib.defLACCP.all;
 
 
-entity ODPBlock is
+entity ODPBlockNoTot is
   generic(
     kNumInput     : integer := 32;
     enDEBUG       : boolean := false
@@ -40,7 +40,8 @@ entity ODPBlock is
     regReadyLut     : out std_logic;
     regEnInv        : in std_logic;
 
-    regTdcMask      : in std_logic_vector(kNumInput-1 downto 0);
+    regTdcMaskL     : in std_logic_vector(kNumInput-1 downto 0);
+    regTdcMaskT     : in std_logic_vector(kNumInput-1 downto 0);
 
     enBypassDelay   : in  std_logic;
     enBypassParing  : in  std_logic;
@@ -70,13 +71,13 @@ entity ODPBlock is
     calibIn         : in  std_logic;
 
     -- Data Out --
-    validOut        : out std_logic_vector(kNumInput-1 downto 0);
-    dOut            : out DataArrayType(kNumInput-1 downto 0)
+    validOut        : out std_logic_vector(2*kNumInput-1 downto 0);
+    dOut            : out DataArrayType(2*kNumInput-1 downto 0)
 
   );
-end ODPBlock;
+end ODPBlockNoTot;
 
-architecture RTL of ODPBlock is
+architecture RTL of ODPBlockNoTot is
   attribute keep : string;
   attribute keep_hierarchy : string;
 
@@ -167,36 +168,35 @@ architecture RTL of ODPBlock is
   signal valid_ctrailing        : std_logic_vector(kNumInput -1 downto 0);
   signal finecount_ctrailing    : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
 
-  -- Data path merging --
-  signal valid_data             : std_logic_vector(kNumInput -1 downto 0);
-  signal valid_data_mask        : std_logic_vector(kNumInput -1 downto 0);
-  signal finecount_data         : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
-  signal finetot_data           : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
-  signal is_leading             : std_logic_vector(kNumInput -1 downto 0);
+  -- TDC channel mask --
+  signal valid_data_mask_l        : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_data_mask_t        : std_logic_vector(kNumInput -1 downto 0);
 
   -- TDC delay buffer --
-  signal valid_data_delay       : std_logic_vector(kNumInput -1 downto 0);
-  signal is_leading_delay       : std_logic_vector(kNumInput -1 downto 0);
-  signal finecount_data_delay   : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
-  signal finetot_data_delay     : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
+  signal valid_data_delay_l     : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_data_delay_t     : std_logic_vector(kNumInput -1 downto 0);
+  signal finecount_data_delay_l   : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
+  signal finecount_data_delay_t   : FineCountArrayType(kNumInput-1 downto 0)(kWidthFineCount-1 downto 0);
+
 
   -- Trigger emulation --
-  signal valid_data_trigger     : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_data_trigger_l   : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_data_trigger_t   : std_logic_vector(kNumInput -1 downto 0);
 
   -- Delimiter inserter --
-  signal dtiming_hb             : TimingArrayType(kNumInput-1 downto 0)(kWidthTiming-1 downto 0);
-  signal dtot_hb                : TotArrayType(kNumInput-1 downto 0)(kWidthTOT-1 downto 0);
+  signal dtiming_hb_l           : TimingArrayType(kNumInput-1 downto 0)(kWidthTiming-1 downto 0);
+  signal dtiming_hb_t           : TimingArrayType(kNumInput-1 downto 0)(kWidthTiming-1 downto 0);
 
-  signal valid_inserter         : std_logic_vector(kNumInput -1 downto 0);
-  signal dout_inserter          : IntDataArrayType(kNumInput-1 downto 0)(kWidthIntData-1 downto 0);
-
-  -- LT Pairing --
-  signal valid_pairing          : std_logic_vector(kNumInput -1 downto 0);
-  signal dout_pairing           : IntDataArrayType(kNumInput-1 downto 0)(kWidthIntData-1 downto 0);
+  signal valid_inserter_l       : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_inserter_t       : std_logic_vector(kNumInput -1 downto 0);
+  signal dout_inserter_l        : IntDataArrayType(kNumInput-1 downto 0)(kWidthIntData-1 downto 0);
+  signal dout_inserter_t        : IntDataArrayType(kNumInput-1 downto 0)(kWidthIntData-1 downto 0);
 
   -- TOTFilter --
-  signal valid_tot_filter       : std_logic_vector(kNumInput -1 downto 0);
-  signal dout_tot_filter        : DataArrayType(kNumInput-1 downto 0);
+  signal valid_tot_filter_l     : std_logic_vector(kNumInput -1 downto 0);
+  signal valid_tot_filter_t     : std_logic_vector(kNumInput -1 downto 0);
+  signal dout_tot_filter_l      : DataArrayType(kNumInput-1 downto 0);
+  signal dout_tot_filter_t      : DataArrayType(kNumInput-1 downto 0);
 
 type sliceOrgArray is array(kNumInput-1 downto 0) of string(1 to 8);
 constant SlicePosition              : sliceOrgArray :=
@@ -226,8 +226,10 @@ begin
   -- =========================== body ===============================
   daq_off_reset <= not daqOn;
 
-  validOut  <= valid_tot_filter;
-  dOut      <= dout_tot_filter;
+  validOut(kNumInput-1 downto 0)            <= valid_tot_filter_l;
+  validOut(2*kNumInput-1 downto kNumInput)  <= valid_tot_filter_t;
+  dOut(kNumInput-1 downto 0)                <= dout_tot_filter_l;
+  dOut(2*kNumInput-1 downto kNumInput)      <= dout_tot_filter_t;
 
   hitOut    <= valid_raw_leading;
 
@@ -442,26 +444,6 @@ begin
         dOut            => finecount_ctrailing(i)
       );
 
-    -- LTMerger --
-    u_lt_merger : entity mylib.LTMerger
-      port map(
-        clk           => baseClk,
-
-        -- Leading in --
-        validLeading  => valid_cleading(i),
-        dInLeading    => finecount_cleading(i),
-
-        -- Trailing in --
-        validTrailing => valid_ctrailing(i),
-        dInTrailing   => finecount_ctrailing(i),
-
-        -- Data out --
-        validOut      => valid_data(i),
-        isLeading     => is_leading(i),
-        dOutTOT       => finetot_data(i),
-        dOutTiming    => finecount_data(i)
-      );
-
 
     u_reset_gen_tdc   : entity mylib.ResetGen
       port map(rst, tdcClk, sync_reset_tdc(i));
@@ -469,9 +451,10 @@ begin
   end generate;
 
   -- TDC delay buffer ------------------------------------------------
-  valid_data_mask <= valid_data and (not regTdcMask);
+  valid_data_mask_l <= valid_cleading and (not regTdcMaskL);
+  valid_data_mask_t <= valid_ctrailing and (not regTdcMaskT);
 
-  u_TDCDelayBuffer : entity mylib.TDCDelayBuffer
+  u_TDCDelayBufferL : entity mylib.TDCDelayBuffer
     generic map(
       kNumInput => kNumInput,
       enDEBUG   => false
@@ -483,26 +466,52 @@ begin
       enBypass        => enBypassDelay,
 
       -- Data In --
-      validIn         => valid_data_mask,
-      isLeadingIn     => is_leading,
-      dInTOT          => finetot_data,
-      dIn             => finecount_data,
+      validIn         => valid_data_mask_l,
+      isLeadingIn     => (others => '1'),
+      dInTOT          => (others => (others => '0')),
+      dIn             => finecount_cleading,
 
       -- Data Out --
-      vaildOut        => valid_data_delay,
-      isLeadingOut    => is_leading_delay,
-      dOutTOT         => finetot_data_delay,
-      dOut            => finecount_data_delay
+      vaildOut        => valid_data_delay_l,
+      isLeadingOut    => open,
+      dOutTOT         => open,
+      dOut            => finecount_data_delay_l
+      );
+
+  u_TDCDelayBufferT : entity mylib.TDCDelayBuffer
+    generic map(
+      kNumInput => kNumInput,
+      enDEBUG   => false
+      )
+    port map
+    (
+      -- system --
+      clk             => baseClk,
+      enBypass        => enBypassDelay,
+
+      -- Data In --
+      validIn         => valid_data_mask_t,
+      isLeadingIn     => (others => '0'),
+      dInTOT          => (others => (others => '0')),
+      dIn             => finecount_ctrailing,
+
+      -- Data Out --
+      vaildOut        => valid_data_delay_t,
+      isLeadingOut    => open,
+      dOutTOT         => open,
+      dOut            => finecount_data_delay_t
       );
 
   -- Heartbeat frame definition ------------------------------------------------
   gen_tdcdata : for i in 0 to kNumInput-1 generate
   begin
-    valid_data_trigger(i)   <= triggerGate and valid_data_delay(i);
-    dtiming_hb(i)           <= hbCount & finecount_data_delay(i);
-    dtot_hb(i)              <= std_logic_vector( to_unsigned(0, kWidthTOT-kWidthFineCount)) & finetot_data_delay(i);
+    valid_data_trigger_l(i)   <= triggerGate and valid_data_delay_l(i);
+    valid_data_trigger_t(i)   <= triggerGate and valid_data_delay_t(i);
+    dtiming_hb_l(i)           <= hbCount & finecount_data_delay_l(i);
+    dtiming_hb_t(i)           <= hbCount & finecount_data_delay_t(i);
 
-    u_delimiterInserter : entity mylib.DelimiterInserter
+
+    u_delimiterInserterL : entity mylib.DelimiterInserter
       generic map
         (
           enDEBUG         => false
@@ -519,10 +528,10 @@ begin
         signBit         => LaccpFineOffset(LaccpFineOffset'high),
 
         -- TDC in --
-        validIn         => valid_data_trigger(i),
-        dInTiming       => dtiming_hb(i),
-        isLeading       => is_leading_delay(i),
-        dInToT          => dtot_hb(i),
+        validIn         => valid_data_trigger_l(i),
+        dInTiming       => dtiming_hb_l(i),
+        isLeading       => '1',
+        dInToT          => (others => '0'),
 
         -- Delimiter word input --
         validDelimiter  => validDelimiter,
@@ -531,51 +540,87 @@ begin
         hbfThrottlingOn => hbfThrottlingOn,
 
         -- output --
-        validOut        => valid_inserter(i),
-        dOut            => dout_inserter(i)
+        validOut        => valid_inserter_l(i),
+        dOut            => dout_inserter_l(i)
+      );
+
+    --
+    u_delimiterInserterT : entity mylib.DelimiterInserter
+      generic map
+        (
+          enDEBUG         => false
+          --enDEBUG       => GetDebugFlag(i)
+        )
+      port map
+      (
+        -- system --
+        clk             => baseClk,
+        syncReset       => sync_reset,
+        --userRegIn       => userReg,
+        --channelNum      => std_logic_vector(to_unsigned(i+GetChOffset(genChOffset), kWidthChannel)),
+        enBypassParing  => enBypassParing,
+        signBit         => LaccpFineOffset(LaccpFineOffset'high),
+
+        -- TDC in --
+        validIn         => valid_data_trigger_t(i),
+        dInTiming       => dtiming_hb_t(i),
+        isLeading       => '0',
+        dInToT          => (others => '0'),
+
+        -- Delimiter word input --
+        validDelimiter  => validDelimiter,
+        dInDelimiter    => dInDelimiter,
+        daqOn           => daqOn,
+        hbfThrottlingOn => hbfThrottlingOn,
+
+        -- output --
+        validOut        => valid_inserter_t(i),
+        dOut            => dout_inserter_t(i)
       );
   end generate;
 
 
   -- Data processing -----------------------------------------------------------
-  gen_LTparing : for i in 0 to kNumInput-1 generate
+  gen_daqword : for i in 0 to kNumInput-1 generate
   begin
-    u_ltparing : entity mylib.LTParingUnit
-      generic map(
-        --enDEBUG   => GetDebugFlag(i)
-        enDEBUG   => false
-      )
-      port map(
-        syncReset => sync_reset or daq_off_reset,
-        clk       => baseClk,
-        enBypass  => enBypassParing,
 
-        -- Data In --
-        validIn   => valid_inserter(i),
-        dIn       => dout_inserter(i),
-
-        -- Data Out --
-        validOut  => valid_pairing(i),
-        dOut      => dout_pairing(i)
-      );
-
-    u_TOTFilter : entity mylib.TOTFilter
+    u_TOTFilterL : entity mylib.TOTFilter
       port map(
         syncReset         => sync_reset or daq_off_reset,
         clk               => baseClk,
-        enFilter          => enTotFilter,
-        minTh             => totMinTh,
-        maxTh             => totMaxTh,
-        enZeroThrough     => enTotZeroThrough,
+        enFilter          => '0',
+        minTh             => (others => '0'),
+        maxTh             => (others => '0'),
+        enZeroThrough     => '0',
         channelNum        => std_logic_vector(to_unsigned(i+GetChOffset(genChOffset), kWidthChannel)),
 
         -- Data In --
-        validIn           => valid_pairing(i),
-        dIn               => dout_pairing(i),
+        validIn           => valid_inserter_l(i),
+        dIn               => dout_inserter_l(i),
 
         -- Out --
-        validOut          => valid_tot_filter(i),
-        dOut              => dout_tot_filter(i)
+        validOut          => valid_tot_filter_l(i),
+        dOut              => dout_tot_filter_l(i)
+      );
+
+    --
+    u_TOTFilterT : entity mylib.TOTFilter
+      port map(
+        syncReset         => sync_reset or daq_off_reset,
+        clk               => baseClk,
+        enFilter          => '0',
+        minTh             => (others => '0'),
+        maxTh             => (others => '0'),
+        enZeroThrough     => '0',
+        channelNum        => std_logic_vector(to_unsigned(i+GetChOffset(genChOffset), kWidthChannel)),
+
+        -- Data In --
+        validIn           => valid_inserter_t(i),
+        dIn               => dout_inserter_t(i),
+
+        -- Out --
+        validOut          => valid_tot_filter_t(i),
+        dOut              => dout_tot_filter_t(i)
       );
   end generate;
 

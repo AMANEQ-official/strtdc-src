@@ -17,7 +17,7 @@ use mylib.defGateGen.all;
 use mylib.defThrottling.all;
 use mylib.defStrHRTDC.all;
 
-entity StrHrTdc is
+entity StrHrTdcNoTot is
   generic(
     kNumInput       : integer:= 32;
     kDivisionRatio  : integer:= 4;
@@ -80,9 +80,9 @@ entity StrHrTdc is
     weLocalBus          : in std_logic;
     readyLocalBus       : out std_logic
   );
-end StrHrTdc;
+end StrHrTdcNoTot;
 
-architecture RTL of StrHrTdc is
+architecture RTL of StrHrTdcNoTot is
   attribute mark_debug      : boolean;
 
   -- System --
@@ -144,13 +144,12 @@ architecture RTL of StrHrTdc is
   attribute mark_debug of delimiter_dout        : signal is enDEBUG;
 
   -- ODP ----------------------------------------------------------
-  signal odp_wren   : std_logic_vector(kNumInput-1 downto 0);
-  signal odp_dout   : DataArrayType(kNumInput-1 downto 0);
+  signal odp_wren   : std_logic_vector(2*kNumInput-1 downto 0);
+  signal odp_dout   : DataArrayType(2*kNumInput-1 downto 0);
 
   signal reg_tdc_mask     : std_logic_vector(255 downto 0);
+  signal reg_tdc_mask_t   : std_logic_vector(255 downto 0);
   signal reg_enbypass     : std_logic_vector(kWidthBypass-1 downto 0);
-  signal reg_tot_filter_control : std_logic_vector(kWidthBypass-1 downto 0);
-  signal reg_tot_minth, reg_tot_maxth : std_logic_vector(kWidthTOT-1 downto 0);
 
   signal reg_through, reg_switch, reg_auto_sw, reg_eninv  : std_logic;
 
@@ -341,7 +340,7 @@ begin
     );
 
   -- ODP block --
-  u_ODPBlock: entity mylib.ODPBlock
+  u_ODPBlock: entity mylib.ODPBlockNoTot
     generic map(
       kNumInput     => kNumInput,
       enDEBUG       => false
@@ -366,16 +365,17 @@ begin
       regReadyLut     => reg_ready_lut,
       regEnInv        => reg_eninv,
 
-      regTdcMask      => reg_tdc_mask(kNumInput-1 downto 0),
+      regTdcMaskL    => reg_tdc_mask(kNumInput-1 downto 0),
+      regTdcMaskT    => reg_tdc_mask_t(kNumInput-1 downto 0),
 
       enBypassDelay   => reg_enbypass(kIndexDelay),
-      enBypassParing  => reg_enbypass(kIndexParing),
+      enBypassParing  => '0',
       enBypassOfsCorr => reg_enbypass(kIndexOfsCorr),
 
-      enTotFilter     => reg_tot_filter_control(kIndexTotFilter),
-      enTotZeroThrough => reg_tot_filter_control(kIndexTotZeroThrough),
-      totMinTh        => reg_tot_minth,
-      totMaxTh        => reg_tot_maxth,
+      enTotFilter     => '0',
+      enTotZeroThrough => '0',
+      totMinTh        => (others => '0'),
+      totMaxTh        => (others => '0'),
 
       testModeIn      => testModeIn,
 
@@ -404,7 +404,7 @@ begin
   u_VitalBlock: entity mylib.VitalBlock
     generic map(
       kTdcType        => "LRTDC",
-      kNumInput       => kNumInput,
+      kNumInput       => 2*kNumInput,
       kDivisionRatio  => kDivisionRatio,
       enDEBUG         => false
     )
@@ -453,10 +453,8 @@ begin
         reg_switch        <= '0';
         reg_eninv         <= '0';
         reg_tdc_mask      <= (others => '0');
+        reg_tdc_mask_t    <= (others => '0');
         reg_enbypass      <= (others => '0');
-        reg_tot_filter_control  <= (others => '0');
-        reg_tot_minth           <= (others => '0');
-        reg_tot_maxth           <= (others => '0');
 
         reg_emumode_on    <= (others => '0');
         reg_trigger_delay <= (others => '0');
@@ -514,38 +512,23 @@ begin
               end case;
               state_lbus      <= Done;
 
+            elsif(addrLocalBus(kNonMultiByte'range) = kTdcMaskT(kNonMultiByte'range)) then
+              case addrLocalBus(kMultiByte'range) is
+                when k1stByte =>
+                  reg_tdc_mask_t(7 downto 0)  <= dataLocalBusIn;
+                when k2ndByte =>
+                  reg_tdc_mask_t(15 downto 8)  <= dataLocalBusIn;
+                when k3rdByte =>
+                  reg_tdc_mask_t(23 downto 16)  <= dataLocalBusIn;
+                when k4thByte =>
+                  reg_tdc_mask_t(31 downto 24)  <= dataLocalBusIn;
+                when others =>
+                  null;
+              end case;
+              state_lbus      <= Done;
+
             elsif(addrLocalBus(kNonMultiByte'range) = kEnBypass(kNonMultiByte'range)) then
               reg_enbypass    <= dataLocalBusIn;
-              state_lbus      <= Done;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotFilterControl(kNonMultiByte'range)) then
-              reg_tot_filter_control  <= dataLocalBusIn;
-              state_lbus              <= Done;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotMinTh(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  reg_tot_minth(7 downto 0)   <= dataLocalBusIn;
-                when k2ndByte =>
-                  reg_tot_minth(15 downto 8)  <= dataLocalBusIn;
-                when k3rdByte =>
-                  reg_tot_minth(kWidthTOT-1 downto 16) <= dataLocalBusIn(5 downto 0);
-                when others =>
-                  null;
-              end case;
-              state_lbus      <= Done;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotMaxTh(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  reg_tot_maxth(7 downto 0)   <= dataLocalBusIn;
-                when k2ndByte =>
-                  reg_tot_maxth(15 downto 8)  <= dataLocalBusIn;
-                when k3rdByte =>
-                  reg_tot_maxth(kWidthTOT-1 downto 16) <= dataLocalBusIn(5 downto 0);
-                when others =>
-                  null;
-              end case;
               state_lbus      <= Done;
 
             elsif(addrLocalBus(kNonMultiByte'range) = kTriggerEmuControl(kNonMultiByte'range)) then
@@ -611,35 +594,22 @@ begin
                   null;
               end case;
 
+            elsif(addrLocalBus(kNonMultiByte'range) = kTdcMaskT(kNonMultiByte'range)) then
+              case addrLocalBus(kMultiByte'range) is
+                when k1stByte =>
+                  dataLocalBusOut <= reg_tdc_mask_t(7 downto 0);
+                when k2ndByte =>
+                  dataLocalBusOut <= reg_tdc_mask_t(15 downto 8);
+                when k3rdByte =>
+                  dataLocalBusOut <= reg_tdc_mask_t(23 downto 16);
+                when k4thByte =>
+                  dataLocalBusOut <= reg_tdc_mask_t(31 downto 24);
+                when others =>
+                  null;
+              end case;
+
             elsif(addrLocalBus(kNonMultiByte'range) = kEnBypass(kNonMultiByte'range)) then
               dataLocalBusOut <= reg_enbypass;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotFilterControl(kNonMultiByte'range)) then
-              dataLocalBusOut   <= reg_tot_filter_control;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotMinTh(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  dataLocalBusOut   <= reg_tot_minth(7 downto 0);
-                when k2ndByte =>
-                  dataLocalBusOut   <= reg_tot_minth(15 downto 8);
-                when k3rdByte =>
-                  dataLocalBusOut   <= "00" & reg_tot_minth(kWidthTOT-1 downto 16);
-                when others =>
-                  null;
-              end case;
-
-            elsif(addrLocalBus(kNonMultiByte'range) = kTotMaxTh(kNonMultiByte'range)) then
-              case addrLocalBus(kMultiByte'range) is
-                when k1stByte =>
-                  dataLocalBusOut   <= reg_tot_maxth(7 downto 0);
-                when k2ndByte =>
-                  dataLocalBusOut   <= reg_tot_maxth(15 downto 8);
-                when k3rdByte =>
-                  dataLocalBusOut   <= "00" & reg_tot_maxth(kWidthTOT-1 downto 16);
-                when others =>
-                  null;
-              end case;
 
             elsif(addrLocalBus(kNonMultiByte'range) = kTriggerEmuControl(kNonMultiByte'range)) then
               dataLocalBusOut <= (kTriggerMode'range => reg_emumode_on, others => '0');

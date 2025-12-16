@@ -11,7 +11,7 @@ package defStrHRTDC is
   -- Control registers --
   constant kIndexThrough          : integer:= 0;
   constant kIndexAutoSW           : integer:= 1;
-  constant kIndexStopDout         : integer:= 2;
+  constant kIndexEnInv            : integer:= 2;
 
   constant kReqSwitch             : LocalAddressType := x"020"; -- W,   [0:0], Assert manual switch
   constant kStatus                : LocalAddressType := x"030"; -- R,   [0:0], reg_ready_lut
@@ -40,5 +40,7 @@ package defStrHRTDC is
   --constant kHbdUserReg            : LocalAddressType := x"0D0"; -- W,   [15:0], Hb 2nd delimiter user data
 
   constant kSelfRecoveryMode      : LocalAddressType := x"0E0"; -- W/R, [0:0], Activate self recovery mode
+
+  constant kTdcMaskT              : LocalAddressType := x"0F0"; -- W/R, [31:0], tdc data mask
 
 end package defStrHRTDC;
